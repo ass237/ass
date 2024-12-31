@@ -1,0 +1,171 @@
+datasource db {
+  provider = "mongodb"
+  url      = env("MONGODB_URI")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  ADMIN
+  REGULAR
+  GUEST
+  VIP
+}
+
+enum BloodType {
+  A_positive
+  A_negative
+  B_positive
+  B_negative
+  AB_positive
+  AB_negative
+  O_positive
+  O_negative
+  Unknown
+}
+
+enum Sex {
+  Male
+  Female
+  Other
+  Unknown
+}
+
+enum Status {
+  accepted
+  pending
+  rejected
+}
+
+model User {
+  id            String          @id @default(auto()) @map("_id") @db.ObjectId
+  //userId        Int             @unique @default(autoincrement())
+  name          String?
+  firstname     String?
+  lastname      String?
+  email         String          @unique
+  sex           Sex?            @default(Unknown)
+  emailVerified DateTime?
+  accounts      Account[]
+  role          Role            @default(REGULAR)
+  image         String?         @db.String
+  phone         String?
+  numReq        Int             @default(0)
+  numDon        Int             @default(0)
+  donorStatus   Boolean         @default(false)
+  address       String?
+  bloodType     BloodType       @default(Unknown)
+  bio           String?
+  age           Int?
+  Authenticator Authenticator[]
+  sessions      Session[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+}
+
+model Account {
+  id                String  @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String  @db.ObjectId
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.String
+  access_token      String? @db.String
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.String
+  session_state     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model BloodBank {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String   @unique
+  address     String
+  phone       String   @unique
+  email       String   @unique
+  latitude    Float?
+  longitude   Float?
+  A_positive  Int
+  A_negative  Int
+  B_positive  Int
+  B_negative  Int
+  AB_positive Int
+  AB_negative Int
+  O_positive  Int
+  O_negative  Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model BloodRequest {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  date      DateTime  @default(now()) // Timestamp when the request is created
+  email     String
+  phone     String // Contact number of the recipient
+  address   String
+  sex       Sex
+  age       Int
+  note      String    @default("")
+  name      String
+  bloodType BloodType // Blood type of the recipient
+  bloodQty  Int
+  role      Role
+  urgency   String // Urgency of the blood request, e.g., "high", "medium", "low"
+  status    Status    @default(pending) // Status of the request (default is pending)
+  createdAt DateTime  @default(now()) // Timestamp of when the record was created
+  updatedAt DateTime  @updatedAt // Timestamp of the last update
+}
+
+model Event {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  description String
+  startDate   String
+  stopDate    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model VerificationToken {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// Optional for WebAuthn support
+model Authenticator {
+  credentialID         String  @id @map("_id")
+  userId               String  @db.ObjectId
+  providerAccountId    String
+  credentialPublicKey  String
+  counter              Int
+  credentialDeviceType String
+  credentialBackedUp   Boolean
+  transports           String?
+  user                 User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, credentialID])
+}
+
+model Session {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  sessionToken String   @unique
+  userId       String   @db.ObjectId
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
